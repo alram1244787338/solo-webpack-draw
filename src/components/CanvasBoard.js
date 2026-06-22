@@ -23,17 +23,19 @@ class CanvasBoard {
   init() {
     this._render();
     this._bindEvents();
-    this._fillWhite();
     this.saveSnapshot();
   }
 
   _render() {
     this.container.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'canvas-board-wrap';
     this.canvas = document.createElement('canvas');
     this.canvas.width = CANVAS_WIDTH;
     this.canvas.height = CANVAS_HEIGHT;
     this.canvas.className = 'canvas-board';
-    this.container.appendChild(this.canvas);
+    wrap.appendChild(this.canvas);
+    this.container.appendChild(wrap);
     this.ctx = this.canvas.getContext('2d');
   }
 
@@ -42,11 +44,6 @@ class CanvasBoard {
     this.canvas.addEventListener('mousemove', this._onMouseMove);
     this.canvas.addEventListener('mouseup', this._onMouseUp);
     this.canvas.addEventListener('mouseleave', this._onMouseLeave);
-  }
-
-  _fillWhite() {
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
   }
 
   _getPos(e) {
@@ -63,6 +60,17 @@ class CanvasBoard {
     this.lastX = pos.x;
     this.lastY = pos.y;
 
+    this.ctx.save();
+    if (this.tool === 'eraser') {
+      this.ctx.globalCompositeOperation = 'destination-out';
+    } else {
+      this.ctx.globalCompositeOperation = 'source-over';
+    }
+    this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = this.tool === 'eraser' ? this.lineWidth * 3 : this.lineWidth;
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
+
     this.ctx.beginPath();
     this.ctx.moveTo(this.lastX, this.lastY);
   }
@@ -70,11 +78,6 @@ class CanvasBoard {
   _onMouseMove(e) {
     if (!this.isDrawing) return;
     const pos = this._getPos(e);
-
-    this.ctx.strokeStyle = this.tool === 'eraser' ? '#ffffff' : this.color;
-    this.ctx.lineWidth = this.tool === 'eraser' ? this.lineWidth * 3 : this.lineWidth;
-    this.ctx.lineCap = 'round';
-    this.ctx.lineJoin = 'round';
 
     this.ctx.lineTo(pos.x, pos.y);
     this.ctx.stroke();
@@ -87,6 +90,7 @@ class CanvasBoard {
     if (!this.isDrawing) return;
     this.isDrawing = false;
     this.ctx.closePath();
+    this.ctx.restore();
     this.saveSnapshot();
   }
 
@@ -94,6 +98,7 @@ class CanvasBoard {
     if (!this.isDrawing) return;
     this.isDrawing = false;
     this.ctx.closePath();
+    this.ctx.restore();
     this.saveSnapshot();
   }
 
@@ -135,10 +140,27 @@ class CanvasBoard {
     return false;
   }
 
+  async redo() {
+    const snapshot = this.historyManager.redo();
+    if (snapshot) {
+      await this.restoreSnapshot(snapshot);
+      return true;
+    }
+    return false;
+  }
+
   exportPNG() {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = CANVAS_WIDTH;
+    tempCanvas.height = CANVAS_HEIGHT;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.fillStyle = '#ffffff';
+    tempCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    tempCtx.drawImage(this.canvas, 0, 0);
+
     const link = document.createElement('a');
     link.download = `canvas-draw-${Date.now()}.png`;
-    link.href = this.canvas.toDataURL('image/png');
+    link.href = tempCanvas.toDataURL('image/png');
     link.click();
   }
 

@@ -20,11 +20,13 @@ class Toolbar {
     this.onColorChange = null;
     this.onLineWidthChange = null;
     this.onUndo = null;
+    this.onRedo = null;
 
     this._onToolClick = this._onToolClick.bind(this);
     this._onColorClick = this._onColorClick.bind(this);
     this._onWidthInput = this._onWidthInput.bind(this);
     this._onUndoClick = this._onUndoClick.bind(this);
+    this._onRedoClick = this._onRedoClick.bind(this);
   }
 
   init() {
@@ -46,7 +48,7 @@ class Toolbar {
             <span class="tool-btn__label">橡皮擦</span>
           </button>
         </div>
-      </div>
+        </div>
 
       <div class="toolbar-section">
         <div class="toolbar-section__title">颜色</div>
@@ -86,9 +88,14 @@ class Toolbar {
 
       <div class="toolbar-section">
         <div class="toolbar-section__title">操作</div>
-        <button class="action-btn action-btn--undo" type="button">
-          <span>↶ 撤销 (Ctrl+Z)</span>
-        </button>
+        <div class="action-buttons">
+          <button class="action-btn action-btn--undo" type="button">
+            <span>↶ 撤销 (Ctrl+Z)</span>
+          </button>
+          <button class="action-btn action-btn--redo" type="button">
+            <span>↷ 重做 (Ctrl+Y)</span>
+          </button>
+        </div>
       </div>
     `;
   }
@@ -104,6 +111,8 @@ class Toolbar {
     slider.addEventListener('input', this._onWidthInput);
     const undoBtn = this.container.querySelector('.action-btn--undo');
     undoBtn.addEventListener('click', this._onUndoClick);
+    const redoBtn = this.container.querySelector('.action-btn--redo');
+    redoBtn.addEventListener('click', this._onRedoClick);
   }
 
   _onToolClick(e) {
@@ -146,6 +155,10 @@ class Toolbar {
     if (this.onUndo) this.onUndo();
   }
 
+  _onRedoClick() {
+    if (this.onRedo) this.onRedo();
+  }
+
   getToolLabel() {
     return this.currentTool === 'brush' ? '画笔' : '橡皮擦';
   }
@@ -161,6 +174,8 @@ class Toolbar {
     if (slider) slider.removeEventListener('input', this._onWidthInput);
     const undoBtn = this.container.querySelector('.action-btn--undo');
     if (undoBtn) undoBtn.removeEventListener('click', this._onUndoClick);
+    const redoBtn = this.container.querySelector('.action-btn--redo');
+    if (redoBtn) redoBtn.removeEventListener('click', this._onRedoClick);
   }
 }
 

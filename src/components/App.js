@@ -1,6 +1,7 @@
 import CanvasBoard from './CanvasBoard.js';
 import Toolbar from './Toolbar.js';
 import HistoryManager from '../utils/HistoryManager.js';
+import { debounce } from '../utils/common.js';
 
 class App {
   constructor(container) {
@@ -12,6 +13,7 @@ class App {
     this.statusBarSize = null;
 
     this._onKeyDown = this._onKeyDown.bind(this);
+    this._handleResize = debounce(this._handleResize.bind(this), 200);
   }
 
   init() {
@@ -28,6 +30,9 @@ class App {
           <div class="app-header__actions">
             <button class="header-btn header-btn--undo" type="button" id="btn-undo">
               ↶ 撤销
+            </button>
+            <button class="header-btn header-btn--redo" type="button" id="btn-redo">
+              ↷ 重做
             </button>
             <button class="header-btn header-btn--export" type="button" id="btn-export">
               📤 导出
@@ -75,23 +80,40 @@ class App {
     this.toolbar.onUndo = () => {
       this._handleUndo();
     };
+    this.toolbar.onRedo = () => {
+      this._handleRedo();
+    };
 
     const btnUndo = this.container.querySelector('#btn-undo');
+    const btnRedo = this.container.querySelector('#btn-redo');
     const btnExport = this.container.querySelector('#btn-export');
     btnUndo.addEventListener('click', () => this._handleUndo());
+    btnRedo.addEventListener('click', () => this._handleRedo());
     btnExport.addEventListener('click', () => this.canvasBoard.exportPNG());
   }
 
   _bindGlobalEvents() {
     document.addEventListener('keydown', this._onKeyDown);
+    window.addEventListener('resize', this._handleResize);
   }
 
   _onKeyDown(e) {
     const isCtrl = e.ctrlKey || e.metaKey;
-    if (isCtrl && e.key.toLowerCase() === 'z') {
+    const isShift = e.shiftKey;
+    const key = e.key.toLowerCase();
+
+    if (isCtrl && key === 'z' && !isShift) {
       e.preventDefault();
       this._handleUndo();
+    } else if ((isCtrl && key === 'y') || (isCtrl && isShift && key === 'z')) {
+      e.preventDefault();
+      this._handleRedo();
     }
+  }
+
+  _handleResize() {
+    const size = this.canvasBoard.getSize();
+    this.statusBarSize.textContent = `画布：${size.width} × ${size.height}`;
   }
 
   async _handleUndo() {
@@ -104,8 +126,19 @@ class App {
     }
   }
 
+  async _handleRedo() {
+    const ok = await this.canvasBoard.redo();
+    if (ok) {
+      this.statusBarTool.textContent = `工具：${this.toolbar.getToolLabel()} · 已重做`;
+      setTimeout(() => {
+        this.statusBarTool.textContent = `工具：${this.toolbar.getToolLabel()}`;
+      }, 1200);
+    }
+  }
+
   destroy() {
     document.removeEventListener('keydown', this._onKeyDown);
+    window.removeEventListener('resize', this._handleResize);
     if (this.canvasBoard) this.canvasBoard.destroy();
     if (this.toolbar) this.toolbar.destroy();
   }
